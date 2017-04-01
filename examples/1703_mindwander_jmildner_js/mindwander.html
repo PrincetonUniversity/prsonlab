@@ -1,0 +1,506 @@
+<!doctype html>
+<!--suppress ALL -->
+<html>
+<head>
+    <title> Mind wandering </title>
+    <script src="https://www.gstatic.com/firebasejs/3.7.1/firebase.js"></script>
+    <script>
+        // Initialize Firebase. Put your config snippet here and uncomment everything but this line.
+     //   var config = {
+     //       apiKey:
+     //       authDomain:
+     //       databaseURL:
+     //       storageBucket:
+     //       messagingSenderId:
+     //   };
+    </script>
+    <script src="https://www.gstatic.com/firebasejs/3.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.7.1/firebase-database.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="jspsych-5.0.3/jspsych.js"></script>
+    <script src="jspsych-5.0.3/plugins/jspsych-text.js"></script>
+    <script src="jspsych-5.0.3/plugins/jspsych-survey-text.js"></script>
+    <script src="jspsych-5.0.3/plugins/jspsych-survey-likert.js"></script>
+    <script src="jspsych-plugin-surveytext-JM.js"></script>
+    <script src="jspsych-text-timed.js"></script>
+    <link href="jspsych-5.0.3/css/jspsych.css" rel="stylesheet" type="text/css">
+
+</head>
+<style>
+    @import url('https://fonts.googleapis.com/css?family=Cousine');
+    html { /*set background color of entire background */
+        background-color: #fffaf0;
+        background-size: 100%;
+    }
+
+    /* create style for text in the center of the page*/
+    p.cent {
+        font-size: 1.5em;
+        line-height: 2em;
+        text-align: center;
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -40%)
+    }
+
+    /*create style for key press instructions at the bottom*/
+    p.bottom {
+        font-size: 1em;
+        text-align: center;
+        position: absolute;
+        top: 85%;
+        left: 50%;
+        transform: translate(-50%, -50%)
+    }
+
+    #inputfield {
+        width: 100%; /*same width as parent (jspsych-survey-text-question)*/
+        height: 65vh; /*height in viewport units 100-top in jspsych-survey-text-question*/
+        box-sizing: border-box;
+        font-size: 1.5em;
+        font-family:"Cousine","Courier New",serif;
+        text-align: center;
+        background: transparent; /*make the box itself invisible*/
+        border: 0; /*no border*/
+        outline: none; /*no outline when active (blue glow)*/
+        resize: none; /*no resize handle*/
+    }
+
+    #jspsych-survey-text { /*this is inputfield's parent*/
+        position: absolute;
+        line-height: 2em;
+        text-align: center;
+        top: 30%;
+        left: 50%;
+        transform: translate(-50%, -30%);
+        font-size: 1.4em;
+    }
+    img {
+      height: 60%;
+      width: 60%;
+      display: block;
+      margin: auto;
+      padding: 20px;
+    }
+</style>
+<body>
+</body>
+
+<script src='MW_text_var.js' charset="utf-8"></script>
+
+<script charset="utf-8">
+  //Launch firebase (uncomment if using)
+  //  firebase.initializeApp(config);
+    ////// SCRIPT SETTINGS //////
+    var intMin = 2;
+    var intMax = 5;
+    var expDur = 30;
+    //////INITIALIZE VARIABLE VALUES /////
+    var expTimer = undefined;
+    /* Initialize expTimer so the experiment starts*/
+    var qTimer = undefined;
+    var subID = undefined;
+    var dataFile = undefined;
+
+    //Input subject ID (press enter to continue)
+    var idNumber = {
+        type: 'surveytext_JM',
+        questions: ['Enter participant ID number:'],
+        yesno: false,
+        id: 'subID',
+        background: "#F0F5FF",
+    };
+    //Set up initial screen for participant and make subID available from data
+    var welcome = {
+        type: 'text',
+        text: '<p class=cent> Welcome! Press any key to begin the experiment.</p>',
+        on_finish: function () {
+            //get the first line of data and extract sequences of digits from response
+            //If it's not 3 digits, change it to 999
+            if(jsPsych.data.getData()[0].responses.match(/\d+/g)){
+            subID = jsPsych.data.getData()[0].responses.match(/\d+/g)[0];
+          } else {
+            console.log('Invalid subject ID, running as 999')
+            subID = 999
+            }
+            //subID = jsPsych.data.getData()[0].responses.match(/\d+/g)[0];
+            var d = new Date();
+            var year = d.getFullYear().toString().substr(2, 2);
+            var month = ('0' + (d.getMonth() + 1)).slice(-2);
+            day = ('0' + d.getDate()).slice(-2);
+            dataFile = year + month + day + '_MW_' + subID;
+            return dataFile;
+        }
+    };
+
+    // Create instructions
+    var instructions = {
+        type: 'text',
+        timeline: [
+            {
+                text: function () {
+                  $('html').css("background-color", "#F0FFF3")
+                  return '<p class=cent>During this task you will be reading a story.<BR/>' +
+                'To advance to the next screen of the story, simply press the spacebar. ' +
+                'If you advance too far, press the backspace key to return to the previous page.</p>' +
+                '<p class=bottom> Press the spacebar to continue </div>'}
+            },
+            {
+                text: function () {
+                  $('html').css("background-color", "#F0FFF3")
+                  return '<p class=cent>At some point during reading, you may realize ' +
+                'that you have no idea what you just read; ' +
+                'furthermore, not only were you not really thinking about the text, ' +
+                'you were thinking about something else altogether. ' +
+                'If so, your mental state would be described as mind-wandering.</p>' +
+                '<p class=bottom> Press the spacebar to continue </p>'}
+            },
+            {
+                text: function () {
+                  $('html').css("background-color", "#F0FFF3")
+                  return '<p class=cent>Periodically during this reading task you will be ' +
+                'asked whether or not your immediately preceding mental state was mind-wandering. ' +
+                '<BR/>If you were just mind-wandering, you will answer yes to this question by pressing ' +
+                'the "y" key. If you were attending to the reading, you will answer no to this ' +
+                'question by pressing the "n" key.</p>' +
+                '<p class=bottom> Press the spacebar to continue </p>'}
+            },
+            {
+                text: function () {
+                  $('html').css("background-color", "#F0FFF3")
+                  return '<p class=cent> When you\'re ready, press the spacebar to start reading.</p>'},
+                on_finish: function () {
+                    startQTimer();
+                    startExpTimer();
+                },
+                timing_post_trial: 1000,
+            }
+        ],
+        cont_key: [' ']
+    };
+
+    var i = 0;
+    var textpres = {
+        type: 'textTimed',
+        text: function () {
+            $('html').css("background-color", "#FFFAF0")
+            return MW_text[i]
+        },
+        cont_key: [32, 8],
+        timeLeft: function () {
+           var limit = Math.min(qTimer,expTimer);
+           return limit
+        },
+        on_finish: function (data) {
+            if (data.key_press == 32) {
+                i++
+            } else if(data.key_press == 8) {
+                i--
+            };
+            if (i == MW_text.length || i < 0) {
+                i = 0
+            };
+            return i;
+        }
+    };
+
+    var questions = {
+        type: 'surveytext_JM',
+        timeline: [
+            {
+                questions: [
+                  'Just prior to being asked, were you mind-wandering?'
+                  +'\n\n(N)o                      (Y)es'
+                ],
+                yesno: true,
+                id: 'SR',
+                background: "#F0F5FF",
+            },
+            {
+                questions: [
+                  'In as much detail as possible, please type what you '
+                + 'were just thinking about. Please write in full sentences. '
+                + 'Press "enter" when you have finished typing.'
+                ],
+                yesno: false,
+                id: 'content',
+                longText: true,
+                background: "#F0F5FF",
+                on_finish: async function () {
+                    startQTimer();
+                },
+                //add more time to make sure timer resets before next trial
+                timing_post_trial: 1000,
+            }
+        ]
+    };
+    //Set display of question time conditional on timer
+    var questionTime = {
+        timeline: [questions],
+        conditional_function: function () {
+            if (qTimer < 0) {
+                return true
+            } else {
+                return false
+            }
+
+        }
+    };
+
+    //Set display of last question before ending conditional on
+    //previous trial not being a question also
+    var questionsEnd = {
+        timeline: [questions],
+        conditional_function: function () {
+            return jsPsych.data.getLastTrialData().trial_type != "surveytext_JM";
+        },
+    };
+
+    var MW_finish = {
+      type: 'text',
+      text: function () {
+        $('html').css("background-color", "#F0FFF3")
+        return '<p class=cent>You have completed this portion of the experiment.<BR/>' +
+        'In the final portion, you will answer some questions about yourself.' +
+        '<p class=bottom> Press the spacebar to continue </div>'
+      }
+    }
+
+    //Repeat timeline if the experiment timer has not run out yet
+    var loopTimeline = {
+        timeline: [textpres, questionTime],
+        loop_function: function () {
+            return expTimer !== 0;
+        }
+    };
+
+    var MWTimeline = [idNumber, welcome, instructions, loopTimeline,
+        questionsEnd, MW_finish];
+    //PANAS
+    var panasLabels = ['very little or not at all','a little','moderately',
+                     'quite a bit','extremely']
+    var panas = {
+      type: 'survey-likert',
+      preamble: 'This scale consists of a number of words that describe ' +
+       'different feelings and emotions. Read each item and then mark ' +
+       'the appropriate answer in the space next to that word. ' +
+       'Indicate to what extent you feel this way right now, that is, '+
+       'at the present moment',
+      questions: [' interested','distressed','excited','upset','strong','guilty',
+        'scared','hostile','enthusiastic','proud','irritable','alert','ashamed',
+        'inspired','nervous','determined','attentive','jittery','active','afraid'],
+      labels: [
+        panasLabels, panasLabels, panasLabels, panasLabels, panasLabels,
+        panasLabels, panasLabels, panasLabels, panasLabels, panasLabels,
+        panasLabels, panasLabels, panasLabels, panasLabels, panasLabels,
+        panasLabels, panasLabels, panasLabels, panasLabels, panasLabels
+      ],
+      name: 'PANAS'
+    }
+
+    //NTB
+    var ntbLabels = ['<p style="font-size:90%">strongly disagree</p>','<p style="font-size:90%">moderately disagree</p>',
+    '<p style="font-size:90%">neither agree nor disagree</p>', '<p style="font-size:90%">moderately agree</p>','<p style="font-size:90%">strongly agree</p>']
+    var ntb = {
+      type: 'survey-likert',
+      preamble: 'For each of the statements below, indicate the degree to which ' +
+      'you agree or disagree with the statement by selecting your response.',
+      questions: [
+        'If other people don\'t seem to accept me, I don\'t let it bother me',
+        'I try hard not to do things that will make other people avoid or reject me.',
+        'I seldom worry about wether other people care about me.',
+        'I need to feel that there are people I can turn to in times of need.',
+        'I want other people to accept me.',
+        'I do not like being alone.',
+        'Being apart from my friends for long periods of time does not bother me.',
+        'I have a strong need to belong.',
+        'It bothers me a great deal when I am not included in other people\'s plans',
+        'My feelings are easily hurt when I feel that others do not accept me.'
+     ],
+     labels: [
+       ntbLabels, ntbLabels, ntbLabels, ntbLabels, ntbLabels,
+       ntbLabels, ntbLabels, ntbLabels, ntbLabels, ntbLabels
+     ],
+     name:'NTB'
+    }
+
+    //IRQ
+    var irqLabels = ['<p style="font-size:90%">strongly disagree</p>','<p style="font-size:90%">disagree</p>',
+    '<p style="font-size:90%">somewhat disagree</p>','<p style="font-size:90%">neither agree nor disagree</p>',
+    '<p style="font-size:90%">somewhat agree</p>','<p style="font-size:90%">agree</p>','<p style="font-size:90%">strongly agree</p>']
+    var irq = {
+      type: 'survey-likert',
+      preamble: 'Please indicate the extent to which you agree with each statement.',
+      questions: [
+        "When something bad happens, my first impulse is to seek out the company of others.",
+        'When I\'m having trouble, I can\'t wait to tell someone about it',
+        'I just have to get help from someone when things are going wrong.',
+        'I manage my emotions by expressing them to others.',
+        "I appreciate having others\' support through difficult times.",
+        "Sometimes I just need someone to understand where I\'m coming from.",
+        "It really helps me feel better during stressful situations when someone knows and cares about what I\'m going through.",
+        "I really appreciate having other people to help me figure out my problems.",
+        "When things are going well, I just have to tell other people about it.",
+        "When something good happens, my first impulse is to tell someone about it.",
+        "When things are going well, I feel compelled to seek out other people.",
+        "When I want to celebrate something good, I seek out certain people to tell them about it.",
+        "I\'m happier when I\'m with my friends than when I\'m by myself.",
+        "Being with other people tends to put a smile on my face.",
+        "I find that even just being around other people can help me to feel better.",
+        "I really enjoy being around the people I know."
+      ],
+      labels: [
+        irqLabels,irqLabels,irqLabels,irqLabels,
+        irqLabels,irqLabels,irqLabels,irqLabels,
+        irqLabels,irqLabels,irqLabels,irqLabels,
+        irqLabels,irqLabels,irqLabels,irqLabels
+      ],
+      name: 'IRQ'
+    }
+
+    //UCLA loneliness
+    var lonelyLabels = ['1 - Never','2 - Rarely','3 - Sometimes', '4 - Always']
+    var lonely = {
+      type: 'survey-likert',
+      preamble: 'The following statements describe how people sometimes feel.' +
+      ' For each statement, please indicate how often you feel the way described.',
+      questions: [
+        'How often do you feel that you are "in tune" with the people around you?',
+        "How often do you feel that you lack companionship?",
+        "How often do you feel that there is no one you can turn to?",
+        "How often do you feel alone?",
+        "How often do you feel part of a group of friends?",
+        "How often do you feel that you have a lot in common with the people around you?",
+        "How often do you feel that you are no longer close to anyone?",
+        "How often do you feel that your interests and ideas are not shared by those around you?",
+        "How often do you feel outgoing and friendly?",
+        "How often do you feel close to people?",
+        "How often do you feel left out?",
+        "How often do you feel that your relationships with others are not meaningful?",
+        "How often do you feel that no one really knows you well?",
+        "How often do you feel isolated from others?",
+        "How often do you feel you can find companionship when you want it?",
+        "How often do you feel that there are people who really understand you?",
+        "How often do you feel shy?",
+        "How often do you feel that people are around you but not with you?",
+        "How often do you feel that there are people you can talk to?",
+        "How often do you feel that there are people you can turn to?"
+      ],
+      labels: [
+        lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,
+        lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,
+        lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,
+        lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,lonelyLabels,
+      ],
+      name: 'lonely'
+    }
+
+    //Word search
+    var wordsearch = {
+      type: 'survey-text',
+      preamble: function () {
+        //var num = Math.floor(Math.random()*3) + 1;
+        var num = 1;
+        return 'There are 10 words total in the word search below. Please find 5 of them.'+
+      ' Words can be made either from left to right, or top to bottom. ' +
+      ' After you find a word, immediately write it in the numbered space below.<BR />'+
+      '<img src="wordsearch'+num+'.png" alt="word search">'},
+      questions: ['1. ', '2. ','3. ','4. ','5. ']
+    }
+    var timeline = MWTimeline.concat(panas, ntb, irq, lonely, wordsearch)
+    //Launch timeline
+    jsPsych.init({
+        default_iti: 100,
+        timeline: timeline,
+        fullscreen: true,
+        on_trial_finish: function(){
+          if(jsPsych.data.getLastTrialData().trial_type == "surveytext_JM"){
+              //saveData();
+          }
+        },
+        on_finish: function () {
+            $('html').css("background-color", "#F0F0F0");
+            if (subID < 100) {
+              jsPsych.endExperiment('<p class=cent> Thank you for completing this task. Please wait until everyone is finished with their task.</p>')
+              jsPsych.data.displayData('json') //preview data
+              //saveData(); //Save to Firebase
+            } else {
+              jsPsych.endExperiment('<p class=cent> Thank you for completing this task. Please let the experimenter know you finished.</p>')
+              jsPsych.data.displayData('json') //preview data
+              //saveData(); //Save to Firebase
+            }
+            //jsPsych.data.localSave((dataFile + '.csv'), 'csv'); //use this instead of saveData(); if no firebase
+        }
+    });
+
+////////----------------FUNCTIONS----------------////////
+    //Save data to Firebase
+    //function saveData() {
+    //    firebase.database().ref('data/' + dataFile).set(jsPsych.data.getData());
+    //}
+    //Start the timer with settings for the question interval
+    function startQTimer() {
+        var interval = Math.random() * (intMax - intMin) + intMin;
+        var QTime = new countdown({
+            seconds: interval,  // number of seconds to count down
+            onUpdateStatus: function (sec) {
+                qTimer = sec;
+                return qTimer;
+            }, // callback for each second
+            onCounterEnd: function () {
+                qTimer = -99
+                console.log(qTimer)
+            } // final action
+        });
+        QTime.start();
+    }
+    //Start the timer with settings for the duration of the experiment
+    function startExpTimer() {
+        var expTime = new countdown({
+            seconds: expDur,  // number of seconds to count down
+            onUpdateStatus: function (sec) {
+                expTimer = sec;
+                return expTimer;
+            }, // callback for each second
+            onCounterEnd: function () {
+                expTimer = 0;
+                console.log(expTimer)
+            } // final action
+        });
+        expTime.start();
+    }
+    //Timer function to count down
+    function countdown(options) {
+        var timer,
+            instance = this,
+            seconds = options.seconds || 10,
+            updateStatus = options.onUpdateStatus || function () {
+                },
+            counterEnd = options.onCounterEnd || function () {
+                };
+        console.log(seconds);
+
+        function decrementCounter() {
+            updateStatus(seconds);
+            if (Math.round(seconds) === 0) {
+                counterEnd();
+                instance.stop();
+            }
+            seconds--;
+        }
+
+        this.start = function () {
+            clearInterval(timer);
+            timer = 0;
+            seconds = options.seconds;
+            timer = setInterval(decrementCounter, 1000);
+        };
+
+        this.stop = function () {
+            clearInterval(timer);
+        };
+    }
+
+</script>
+</html>
